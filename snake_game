@@ -1,0 +1,173 @@
+let s;
+let scl = 20;
+let food;
+let specialItem; // 새로운 특별 아이템 추가
+let playfield = 600;
+let gameOver = false;
+let invincible = false; // 무적 상태 변수 추가
+
+function setup() {
+  createCanvas(playfield, 640);
+  resetGame();
+}
+
+function draw() {
+  background(51);
+  if (!gameOver) {
+    scoreboard();
+    if (s.eat(food)) {
+      pickLocation();
+      s.speedUp();
+    }
+    if (s.eatSpecial(specialItem)) { // 특별 아이템을 먹었을 때
+      invincible = true; // 무적 상태로 설정
+      setTimeout(() => {
+        invincible = false; // 일정 시간 후에 무적 상태 해제
+      }, 5000); // 5초 동안 무적 상태 유지
+      pickSpecialItem(); // 특별 아이템 위치 재설정
+    }
+    s.death();
+    s.update();
+    s.show();
+    fill(255, 0, 100);
+    rect(food.x, food.y, scl, scl);
+    fill(100, 255, 100); // 특별 아이템 색상 변경
+    rect(specialItem.x, specialItem.y, scl, scl);
+  } else {
+    textAlign(CENTER, CENTER);
+    fill(255);
+    textSize(32);
+    text("Game Over! Press any key to restart", playfield / 2, height / 2);
+  }
+}
+
+function pickSpecialItem() { // 특별 아이템 위치 선택 함수
+  let cols = floor(playfield / scl);
+  let rows = floor(playfield / scl);
+  specialItem = createVector(floor(random(cols)), floor(random(rows)));
+  specialItem.mult(scl);
+}
+
+function scoreboard() {
+  fill(0);
+  rect(0, 600, 600, 40);
+  fill(255);
+  textFont("Georgia");
+  textSize(18);
+  text("Score: " + s.score, 10, 625);
+  text("Highscore: " + s.highscore, 450, 625);
+}
+
+function resetGame() {
+  s = new Snake();
+  pickLocation();
+  pickSpecialItem(); // 특별 아이템 위치 설정
+  gameOver = false;
+  frameRate(10);
+}
+
+function pickLocation() { // 플레이어 위치 선택 함수
+  let cols = floor(playfield / scl);
+  let rows = floor(playfield / scl);
+  food = createVector(floor(random(cols)), floor(random(rows)));
+  food.mult(scl);
+}
+
+function keyPressed() {
+  if (gameOver) {
+    resetGame();
+  } else {
+    if (keyCode === UP_ARROW) {
+      s.dir(0, -1);
+    } else if (keyCode === DOWN_ARROW) {
+      s.dir(0, 1);
+    } else if (keyCode === RIGHT_ARROW) {
+      s.dir(1, 0);
+    } else if (keyCode === LEFT_ARROW) {
+      s.dir(-1, 0);
+    }
+  }
+}
+
+function Snake() {
+  this.x = floor(random(floor(playfield / scl))) * scl;
+  this.y = floor(random(floor(playfield / scl))) * scl;
+  this.xspeed = 1;
+  this.yspeed = 0;
+  this.total = 0;
+  this.tail = [];
+  this.score = 0;
+  this.highscore = 0;
+}
+
+Snake.prototype.dir = function(x, y) { // dir 메서드를 prototype으로 추가
+  this.xspeed = x;
+  this.yspeed = y;
+};
+
+Snake.prototype.speedUp = function() {
+  frameRate(frameRate() + 1);
+};
+
+Snake.prototype.eat = function(pos) {
+  let d = dist(this.x, this.y, pos.x, pos.y);
+  if (d < 1) {
+    this.total++;
+    this.score++;
+    if (this.score > this.highscore) {
+      this.highscore = this.score;
+    }
+    return true;
+  } else {
+    return false;
+  }
+};
+
+Snake.prototype.eatSpecial = function(pos) {
+  let d = dist(this.x, this.y, pos.x, pos.y);
+  if (d < 1) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
+Snake.prototype.death = function() {
+  if (!invincible) { // 무적 상태가 아닌 경우에만 체크
+    if (this.x >= playfield || this.x < 0 || this.y >= playfield || this.y < 0) {
+      gameOver = true;
+      frameRate(0);
+      return;
+    }
+
+    for (let i = 0; i < this.tail.length; i++) {
+      let pos = this.tail[i];
+      let d = dist(this.x, this.y, pos.x, pos.y);
+      if (d < 1) {
+        gameOver = true;
+        frameRate(0);
+        return;
+      }
+    }
+  }
+};
+
+Snake.prototype.update = function() {
+  if (this.total === this.tail.length) {
+    for (let i = 0; i < this.tail.length - 1; i++) {
+      this.tail[i] = this.tail[i + 1];
+    }
+  }
+  this.tail[this.total - 1] = createVector(this.x, this.y);
+
+  this.x += this.xspeed * scl;
+  this.y += this.yspeed * scl;
+};
+
+Snake.prototype.show = function() {
+  fill(random(255), random(255), random(255));
+  for (let i = 0; i < this.tail.length; i++) {
+    rect(this.tail[i].x, this.tail[i].y, scl, scl);
+  }
+  rect(this.x, this.y, scl, scl);
+};
